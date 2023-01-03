@@ -1,6 +1,7 @@
 import numpy as np
 # import pygame
 np.random.seed(1234)
+import os
 
 def update_grid(grid):
     x_dim, y_dim = grid.shape
@@ -46,25 +47,31 @@ def safe_first_click(grid, x, y):
     return update_grid(grid)
 
 
-def play_grid(input_coord, grid, grid_visible):
+def uncover_grid(input_coord, grid, grid_visible):
+    neighbors_to_check = []
+    
     if grid[input_coord] == -1:
         grid_visible[input_coord] = "X"
-        return grid_visible
+        return grid_visible, []
     elif grid[input_coord] != 0:
         grid_visible[input_coord] = str(grid[input_coord])
-        return grid_visible
+        return grid_visible, []
     elif grid[input_coord] == 0:
         grid_visible[input_coord] = " "
-        neighbors = [(input_coord[0]+dx, input_coord[1]+dy) for dx in range(-1, 2) for dy in range(-1, 2)]
-        for coord in neighbors:
-            if coord
-                grid_visible[coord] = "o"
-        print(neighbors)
+        cond = lambda x, y: x >= 0 and x < grid.shape[0] and y >= 0 and y < grid.shape[1]
+        neighbors = [(input_coord[0]+dx, input_coord[1]+dy) for dx in range(-1, 2) for dy in range(-1, 2) if cond(input_coord[0]+dx, input_coord[1]+dy)]
         
+        for coord in neighbors:
+            if grid_visible[coord] == "-":
+                grid_visible[coord] = "o"
+                neighbors_to_check.append(coord)
+        return grid_visible, neighbors_to_check
+                
+        
+        # uncover_grid(neighbor, grid, grid_visible, neighbors_to_check)
         
         # if grid_visible[neighbor] == "-":
-            # grid_visible = play_grid(neighbor, grid, grid_visible)
-        return grid_visible
+            # grid_visible = uncover_grid(neighbor, grid, grid_visible)
 
 
 grid_print = lambda grid: print(np.array2string(grid, separator='  ', formatter={'str_kind': lambda x: x if x else ' '}))
@@ -72,13 +79,22 @@ grid_print = lambda grid: print(np.array2string(grid, separator='  ', formatter=
 if __name__ == "__main__":
     grid = create_grid(15, 15, 50)
     grid_visible = np.full(grid.shape, "-", dtype=str)
+    grid_print(grid_visible)
     
-    input_coord = tuple([int(num) for num in input().split(",")])
-    grid = safe_first_click(grid, *input_coord)
-    grid_visible = play_grid(input_coord, grid, grid_visible)
+    coord_list = [tuple([int(num) for num in input().split(",")])]
+    grid = safe_first_click(grid, *coord_list[0])
     
-    while True:
-        grid_print(grid_visible)
-        input_coord = tuple([int(num) for num in input().split(",")])
+    while True:        
+        i = 0
+        while i < len(coord_list):
+            grid_visible, new_coords = uncover_grid(coord_list[i], grid, grid_visible)
+            for coord in new_coords:
+                coord_list.append(coord)
+            i+=1
+            
+            os.system("cls" if os.name == "nt" else "clear")
+            grid_print(grid_visible)
         
-        grid_visible = play_grid(input_coord, grid, grid_visible)
+        coord_list = [tuple([int(num) for num in input().split(",")])]
+            
+        

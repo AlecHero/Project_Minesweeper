@@ -2,6 +2,8 @@ import numpy as np
 # import pygame
 np.random.seed(1234)
 import os
+import tkinter as tk
+
 
 def update_grid(grid):
     x_dim, y_dim = grid.shape
@@ -77,11 +79,40 @@ def uncover_grid(input_coord, grid, grid_visible):
 grid_print = lambda grid: print(np.array2string(grid, separator='  ', formatter={'str_kind': lambda x: x if x else ' '}))
 
 if __name__ == "__main__":
+    pass
     grid = create_grid(15, 15, 50)
     grid_visible = np.full(grid.shape, "-", dtype=str)
     grid_print(grid_visible)
     
+    # # Create the main window
+    # window = tk.Tk()
+
+    # # Function to be called when a button is clicked
+    # def update_buttons():
+        
+        
+    # def button_clicked(x, y):
+    #     coord_list.append((x, y))
+        
+
+    # buttons = []
+
+    # # Create a grid of buttons
+    # for x in range(grid.shape[0]):
+    #     row = []
+    #     for y in range(grid.shape[1]):
+    #         button = tk.Button(window, text=f"{grid_visible[x, y]}", command=lambda x=x, y=y: button_clicked(x, y))
+    #         button.grid(row=x, column=y)
+    #         row.append(button)
+    #         buttons.append(row)
+
+    # # Run the main loop
+    # window.mainloop()
+    
+    
     coord_list = [tuple([int(num) for num in input().split(",")])]
+    
+    print(grid_visible)
     grid = safe_first_click(grid, *coord_list[0])
     
     while True:        
@@ -93,8 +124,9 @@ if __name__ == "__main__":
             i+=1
             
             os.system("cls" if os.name == "nt" else "clear")
-            grid_print(grid_visible)
+            print(grid_visible)
+
         
         coord_list = [tuple([int(num) for num in input().split(",")])]
             
-        
+

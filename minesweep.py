@@ -1,4 +1,2 @@
 print("hello world")
 
-hey
-

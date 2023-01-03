@@ -55,15 +55,15 @@ def play_grid(input_coord, grid, grid_visible):
         return grid_visible
     elif grid[input_coord] == 0:
         grid_visible[input_coord] = " "
-        for i in [-1,0,1]:
-            for j in [-1,0,1]:
-                neighbor = tuple(np.array(input_coord) + np.array((j, i)))
-                
-                if grid_visible[neighbor] == "-":
-                    print(neighbor)
-                    
-                    
-                    # grid_visible = play_grid(neighbor, grid, grid_visible)
+        neighbors = [(input_coord[0]+dx, input_coord[1]+dy) for dx in range(-1, 2) for dy in range(-1, 2)]
+        for coord in neighbors:
+            if coord
+                grid_visible[coord] = "o"
+        print(neighbors)
+        
+        
+        # if grid_visible[neighbor] == "-":
+            # grid_visible = play_grid(neighbor, grid, grid_visible)
         return grid_visible
 
 

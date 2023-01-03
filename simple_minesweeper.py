@@ -1,6 +1,6 @@
 import numpy as np
 # import pygame
-
+np.random.seed(1234)
 
 def update_grid(grid):
     x_dim, y_dim = grid.shape
@@ -46,18 +46,39 @@ def safe_first_click(grid, x, y):
     return update_grid(grid)
 
 
-def play_grid(grid, grid_visible):
-    grid
-    
-    grid_visible
-    return grid_visible
+def play_grid(input_coord, grid, grid_visible):
+    if grid[input_coord] == -1:
+        grid_visible[input_coord] = "X"
+        return grid_visible
+    elif grid[input_coord] != 0:
+        grid_visible[input_coord] = str(grid[input_coord])
+        return grid_visible
+    elif grid[input_coord] == 0:
+        grid_visible[input_coord] = " "
+        for i in [-1,0,1]:
+            for j in [-1,0,1]:
+                neighbor = tuple(np.array(input_coord) + np.array((j, i)))
+                
+                if grid_visible[neighbor] == "-":
+                    print(neighbor)
+                    
+                    
+                    # grid_visible = play_grid(neighbor, grid, grid_visible)
+        return grid_visible
 
 
-grid_print = lambda grid: np.array2string(grid, separator='  ', formatter={'str_kind': lambda x: x if x else ' '})
+grid_print = lambda grid: print(np.array2string(grid, separator='  ', formatter={'str_kind': lambda x: x if x else ' '}))
 
 if __name__ == "__main__":
-    grid = create_grid(10, 10, 20)
+    grid = create_grid(15, 15, 50)
     grid_visible = np.full(grid.shape, "-", dtype=str)
     
-    grid_visible = play_grid(grid, grid_visible)
-    grid_print(grid_visible)
+    input_coord = tuple([int(num) for num in input().split(",")])
+    grid = safe_first_click(grid, *input_coord)
+    grid_visible = play_grid(input_coord, grid, grid_visible)
+    
+    while True:
+        grid_print(grid_visible)
+        input_coord = tuple([int(num) for num in input().split(",")])
+        
+        grid_visible = play_grid(input_coord, grid, grid_visible)

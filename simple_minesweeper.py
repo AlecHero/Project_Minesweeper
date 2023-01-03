@@ -1,4 +1,22 @@
 import numpy as np
+# import pygame
+
+
+def update_grid(grid):
+    x_dim, y_dim = grid.shape
+    grid[grid != -1] = 0 # Reset all non-bomb squares to 0
+    
+    # Loop through all squares and add 1 for all adjacent bombs
+    for i in range(x_dim):
+        for j in range(y_dim):
+            if grid[i][j] != -1:
+                # Add 1 to all adjacent squares:
+                for k in range(-1, 2):
+                    for l in range(-1, 2):
+                        if i + k >= 0 and i + k < x_dim and j + l >= 0 and j + l < y_dim:
+                            if grid[i + k][j + l] == -1:
+                                grid[i][j] += 1
+    return grid
 
 
 def create_grid(x_dim, y_dim, mines):
@@ -11,24 +29,35 @@ def create_grid(x_dim, y_dim, mines):
         y_coord = np.random.randint(0, y_dim)
         grid[x_coord][y_coord] = -1
     
-    for i in range(x_dim):
-        for j in range(y_dim):
-            if grid[i][j] != -1:
-                # Add 1 to all adjacent squares:
-                for k in range(-1, 2):
-                    for l in range(-1, 2):
-                        if i + k >= 0 and i + k < x_dim and j + l >= 0 and j + l < y_dim:
-                            if grid[i + k][j + l] == -1:
-                                grid[i][j] += 1
+    update_grid(grid)
     
     return grid
 
 
+def safe_first_click(grid, x, y):
+    if grid[x][y] == -1:
+        grid[x][y] = 0
+        
+        for i in range(grid.shape[0]):
+            if grid[i, 0] != -1:
+                grid[i, 0] = -1
+                break
 
-def main():
-    print(create_grid(10,10,20))
+    return update_grid(grid)
 
 
+def play_grid(grid, grid_visible):
+    grid
+    
+    grid_visible
+    return grid_visible
+
+
+grid_print = lambda grid: np.array2string(grid, separator='  ', formatter={'str_kind': lambda x: x if x else ' '})
 
 if __name__ == "__main__":
-    main()
+    grid = create_grid(10, 10, 20)
+    grid_visible = np.full(grid.shape, "-", dtype=str)
+    
+    grid_visible = play_grid(grid, grid_visible)
+    grid_print(grid_visible)

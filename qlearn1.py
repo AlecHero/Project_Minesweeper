@@ -206,16 +206,16 @@ class MinesweeperEnv(gym.Env):
         """
         my_board = state
         if not is_new_move(my_board, x, y):
-            return my_board, -1, False, {}
+            return my_board, -10, False, {}
         while True:
             state, game_over = self.get_next_state(my_board, x, y)
             if not game_over:
                 if is_win(state, self.board_size, self.num_mines):
-                    return state, 1000, True, {}
+                    return state, 5000, True, {}
                 else:
-                    return state, 20, False, {}
+                    return state, 10, False, {}
             else:
-                return state, -100, True, {}
+                return state, -500, True, {}
 
     def render(self, mode='human'):
         """
@@ -285,7 +285,7 @@ class Net(nn.Module):
         return actions
     
 class Agent():
-    def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions, max_mem_size=100000, eps_end=0.01, eps_dec=5e-4):
+    def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions, max_mem_size=10000, eps_end=0.01, eps_dec=5e-4):
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = eps_end
@@ -317,9 +317,10 @@ class Agent():
         
     def choose_action(self, observation):
         if np.random.random() > self.epsilon:
-            state = torch.tensor([observation]).to(self.Q_eval.device)
+            state = torch.tensor([observation], dtype=torch.float).to(self.Q_eval.device)
             actions = self.Q_eval.forward(state)
             action = torch.argmax(actions).item()
+            
         else:
             action = np.random.choice(self.action_space)
             
@@ -357,11 +358,11 @@ class Agent():
 
 # if rendering is disabled
 if not rendering_enabled:
-    agent = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=BOARD_SIZE * BOARD_SIZE, eps_end=0.01, input_dims=BOARD_SIZE * BOARD_SIZE * 10, lr=0.003)
+    agent = Agent(gamma=0.90, epsilon=1.0, batch_size=64, n_actions=BOARD_SIZE * BOARD_SIZE, eps_end=0.01, input_dims=BOARD_SIZE * BOARD_SIZE * 10, lr=0.003)
 
     scores, eps_history = [], []
 
-    for i in range(NUM_EPISODES):
+    for k in range(NUM_EPISODES):
         done = False
         observation_ = env.reset()
         observation = np.zeros((10, BOARD_SIZE, BOARD_SIZE))
@@ -376,7 +377,7 @@ if not rendering_enabled:
         
         while not done:
             action = agent.choose_action(observation)
-            n_state, reward, done, info = env.step(action)
+            n_state, reward, done, _ = env.step(action)
             
             new_state = np.zeros((10, BOARD_SIZE, BOARD_SIZE))
             
@@ -396,7 +397,7 @@ if not rendering_enabled:
         
         avg_score = np.mean(scores[-100:])
         
-        #print(f'episode {i} score {score} average score {avg_score} epsilon {agent.epsilon}')
+        print(f'episode {k} score {score} average score {avg_score} epsilon {agent.epsilon}')
         
     # plot learning curve
     x = [i+1 for i in range(len(scores))]

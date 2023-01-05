@@ -378,6 +378,8 @@ if not rendering_enabled:
             action = agent.choose_action(observation)
             n_state, reward, done, info = env.step(action)
             
+            
+            
             new_state = np.zeros((10, BOARD_SIZE, BOARD_SIZE))
             
             for i, j in enumerate([-2, 0, 1, 2, 3, 4, 5, 6, 7, 8]):

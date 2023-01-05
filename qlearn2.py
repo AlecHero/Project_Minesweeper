@@ -52,16 +52,34 @@ def is_mine(board, x, y):
 
 def place_mines(board_size, num_mines):
     """generate a board, place mines randomly"""
-    mines_placed = 0
-    board = np.zeros((board_size, board_size), dtype=int)
-    while mines_placed < num_mines:
-        rnd = randint(0, board_size * board_size)
-        x = int(rnd / board_size)
-        y = int(rnd % board_size)
-        if is_valid(board_size, x, y):
-            if not is_mine(board, x, y):
-                board[x, y] = MINE
-                mines_placed += 1
+    # mines_placed = 0
+    # board = np.zeros((board_size, board_size), dtype=int)
+    # while mines_placed < num_mines:
+    #     rnd = randint(0, board_size * board_size)
+    #     x = int(rnd / board_size)
+    #     y = int(rnd % board_size)
+    #     if is_valid(board_size, x, y):
+    #         if not is_mine(board, x, y):
+    #             board[x, y] = MINE
+    #             mines_placed += 1
+    
+    board1 = np.array([[-1,0,0,0,0],
+                      [0,-1,0,0,0],
+                      [0,-1,0,0,0],
+                      [0,0,0,-1,0],
+                      [0,0,0,0,-1]])
+    
+    board2 = np.array([[0,0,0,0,0],
+                      [0,0,0,-1,0],
+                      [0,0,0,-1,0],
+                      [-1,0,0,0,0],
+                      [0,0,-1,0,-1]])
+    
+    if np.random.rand(1) > 0.5:
+        board = board1
+    else:
+        board = board2
+    
     return board
 
 
@@ -206,16 +224,16 @@ class MinesweeperEnv(gym.Env):
         """
         my_board = state
         if not is_new_move(my_board, x, y):
-            return my_board, -10, False, {}
+            return my_board, -500, True, {}
         while True:
             state, game_over = self.get_next_state(my_board, x, y)
             if not game_over:
                 if is_win(state, self.board_size, self.num_mines):
                     return state, 5000, True, {}
                 else:
-                    return state, 10, False, {}
+                    return state, 50, False, {}
             else:
-                return state, -500, True, {}
+                return state, -1000, True, {}
 
     def render(self, mode='human'):
         """
@@ -247,7 +265,7 @@ losses = 0
 
 BOARD_SIZE = 5
 NUM_MINES = 5
-NUM_EPISODES = 10000
+NUM_EPISODES = 5000
 rendering_enabled = False
 
 env = MinesweeperEnv(board_size=BOARD_SIZE, num_mines=NUM_MINES)
@@ -285,11 +303,11 @@ class Net(nn.Module):
         return actions
     
 class Agent():
-    def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions, max_mem_size=10000, eps_end=0.01, eps_dec=5e-4):
+    def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions, max_mem_size=100000, eps_end=0.01, exp_decay=0.999):
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = eps_end
-        self.eps_dec = eps_dec
+        self.exp_decay = exp_decay
         self.lr = lr
         self.action_space = [i for i in range(n_actions)]
         self.mem_size = max_mem_size
@@ -354,11 +372,11 @@ class Agent():
         loss.backward()
         self.Q_eval.optimizer.step()
         
-        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
+        self.epsilon = self.epsilon * self.exp_decay if self.epsilon > self.eps_min else self.eps_min
 
 # if rendering is disabled
 if not rendering_enabled:
-    agent = Agent(gamma=0.90, epsilon=1.0, batch_size=64, n_actions=BOARD_SIZE * BOARD_SIZE, eps_end=0.01, input_dims=BOARD_SIZE * BOARD_SIZE * 10, lr=0.003)
+    agent = Agent(gamma=0.99, epsilon=1.0, batch_size=20, n_actions=BOARD_SIZE * BOARD_SIZE, eps_end=0.01, input_dims=BOARD_SIZE * BOARD_SIZE * 10, lr=0.003)
 
     scores, eps_history = [], []
 
@@ -379,8 +397,6 @@ if not rendering_enabled:
             action = agent.choose_action(observation)
             n_state, reward, done, _ = env.step(action)
             
-            
-            
             new_state = np.zeros((10, BOARD_SIZE, BOARD_SIZE))
             
             for i, j in enumerate([-2, 0, 1, 2, 3, 4, 5, 6, 7, 8]):
@@ -391,6 +407,7 @@ if not rendering_enabled:
             
             agent.store_transition(observation, action, reward, new_state, done)
             agent.learn()
+            agent.learn()
             observation = new_state
             score += reward
         
@@ -399,7 +416,7 @@ if not rendering_enabled:
         
         avg_score = np.mean(scores[-100:])
         
-        print(f'episode {k} score {score} average score {avg_score} epsilon {agent.epsilon}')
+        print(f'episode {k : 4} score {score : 4} average score {avg_score : 4} epsilon {agent.epsilon : 4}')
         
     # plot learning curve
     x = [i+1 for i in range(len(scores))]

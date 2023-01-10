@@ -109,7 +109,7 @@ def step(board, action):
         done = True
         
     else:
-        board = open_neighbour_cells(board, mine_board, x, y)
+        board = open_neighbour_cells(board, mine_board, x, y).copy()
         reward = 20
         done = False
 
@@ -118,11 +118,6 @@ def step(board, action):
         done = True
 
     return board, reward, done
-
-def drawnow():
-    plt.gcf().canvas.draw()
-    plt.gcf().canvas.flush_events()
-plt.ion()
 
 # Define the parameters
 GAMMA = 0.99
@@ -150,6 +145,7 @@ small_square_size = 20
 slow_mode = False
 render_pygame = True
 action_line_enabled = False
+one_hot_board = True
 pp = 0
 
 if not force_cpu:
@@ -164,7 +160,7 @@ buffer_size = 10_000
 state_buffer = np.zeros((buffer_size, 10, ROWS, COLS), dtype=bool)
 action_buffer = np.zeros(buffer_size, dtype=int)
 new_state_buffer = np.zeros((buffer_size, 10, ROWS, COLS), dtype=bool)
-illegal_action_buffer = np.zeros((buffer_size, ACTIONS), dtype=bool)
+invalid_actions_buffer = np.zeros((buffer_size, ACTIONS), dtype=bool)
 reward_buffer = np.zeros(buffer_size, dtype=int)
 done_buffer = np.zeros(buffer_size, dtype=bool)
 
@@ -193,7 +189,7 @@ except FileNotFoundError:
     print("Model not found")
 
 # Define the optimizer
-optimizer = optim.AdamW(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.003)
 
 # Define the loss function as mean absolute error
 loss_fn = nn.MSELoss()
@@ -204,8 +200,13 @@ step_count = 0
 
 pygame.init()
 
-board_width = (ROWS) * square_size
-board_height = (COLS) * square_size
+# make space for 10 small boards on the right side of the big board in the center
+if one_hot_board:
+    board_width = (ROWS) * square_size * 3.5 - pp
+    board_height = (COLS) * square_size + 2 * pp
+else:
+    board_width = (ROWS) * square_size
+    board_height = (COLS) * square_size
 
 screen = pygame.display.set_mode((board_width, board_height))
 
@@ -217,7 +218,7 @@ lost_counter = 0
 #----------------------------------------Training----------------------------------------
 for episode in range(EPISODES):
     EPSILON = EPSILON * 0.999
-    EPSILON = max(EPSILON, 0.001)
+    EPSILON = max(EPSILON, 0.01)
 
     score = 0
     done = False
@@ -241,7 +242,6 @@ for episode in range(EPISODES):
             first_move_done = True
     
     while not done:
-        step_count += 1
         invalid_actions = np.nonzero(state[CLOSED].flatten() == False)[0]
 
         if np.random.rand() < EPSILON and not first_move:
@@ -291,6 +291,8 @@ for episode in range(EPISODES):
                     if y == int(action // ROWS) and x == int(action % COLS):
                         pygame.draw.rect(screen, (0, 0, 255), (pp + x * square_size + 5, pp + y * square_size + 5, 10, 10))
 
+
+
             # render the grid
             for x in range(ROWS + 1):
                 pygame.draw.line(screen, (0, 0, 0), (pp + x * square_size, pp), (pp + x * square_size, pp + COLS * square_size))
@@ -304,59 +306,68 @@ for episode in range(EPISODES):
                 for i in range(len(action_line) - 1):
                     pygame.draw.line(screen, (0, 0, 255), (pp + int(action_line[i] % ROWS) * square_size + 5, pp + int(action_line[i] // COLS) * square_size + 5), (pp + int(action_line[i + 1] % ROWS) * square_size + 5, pp + int(action_line[i + 1] // COLS) * square_size + 5))
             
+            
+            if one_hot_board:
+                # draw the 10 small boards from one hot encoding 5 wide and 2 tall to the right of the big board start from the top left corner
+                for i in range(10):
+                    for x, y in itertools.product(range(ROWS), range(COLS)):
+                        if state[i, y, x] == 1:
+                            pygame.draw.rect(screen, (102, 153, 204), (ROWS * square_size - 110 + (i % 5 + 1) * (ROWS + 1) * small_square_size + x * small_square_size, 50 + (i // 5) * (COLS + 1) * small_square_size + y * small_square_size, small_square_size, small_square_size))
+                        else:
+                            pygame.draw.rect(screen, (255, 255, 255), (ROWS * square_size - 110 + (i % 5 + 1) * (ROWS + 1) * small_square_size + x * small_square_size, 50 + (i // 5) * (COLS + 1) * small_square_size + y * small_square_size, small_square_size, small_square_size))
+
+                    # render the grid
+                    for x in range(ROWS + 1):
+                        pygame.draw.line(screen, (0, 0, 0), (ROWS * square_size - 110 + (i % 5 + 1) * (ROWS + 1) * small_square_size + x * small_square_size, 50 + (i // 5) * (COLS + 1) * small_square_size), (ROWS * square_size - 110 + (i % 5 + 1) * (ROWS + 1) * small_square_size + x * small_square_size, 50 + (i // 5) * (COLS + 1) * small_square_size + COLS * small_square_size))
+                    for y in range(COLS + 1):
+                        pygame.draw.line(screen, (0, 0, 0), (ROWS * square_size - 110 + (i % 5 + 1) * (ROWS + 1) * small_square_size, 50 + (i // 5) * (COLS + 1) * small_square_size + y * small_square_size), (ROWS * square_size - 110 + (i % 5 + 1) * (ROWS + 1) * small_square_size + ROWS * small_square_size, 50 + (i // 5) * (COLS + 1) * small_square_size + y * small_square_size))
+            
+            
+            
             pygame.display.update()
             if slow_mode:
-                pygame.time.delay(2000)
+                pygame.time.delay(200)
         
         new_state, reward, done = step(state, action)
         
         # illegal actions
-        invalid_actions_idx = np.nonzero(new_state[CLOSED].flatten() == False)[0]
+        invalid_actions_idx = np.nonzero(new_state[CLOSED].flatten() == False, )[0]
         invalid_actions_new = np.zeros(ROWS * COLS)
         invalid_actions_new[invalid_actions_idx] = True
         
-        with torch.inference_mode():
-            new_observation = model(torch.from_numpy(np.expand_dims(new_state, axis=0)).float().to(device))
-            new_observation = new_observation.detach().cpu().numpy()
-        
-        new_observation = new_observation.flatten()
-        
-        new_observation[invalid_actions_idx] = -np.inf
-        
-        new_action = np.argmax(new_observation)
-        
         score += reward
         
-        # if done:
-        #     valid_actions = np.nonzero(new_state[CLOSED].flatten() == True)[0]
-        #     invalid_actions_newy = np.zeros(ROWS * COLS)
-        #     invalid_actions_newy[valid_actions] = False
+        if done:
+            valid_actions = np.nonzero(new_state[CLOSED].flatten() == True)[0]
+            invalid_actions_newy = np.zeros(ROWS * COLS)
+            invalid_actions_newy[valid_actions] = False
             
-        #     for i in valid_actions:
-        #         x = i // ROWS
-        #         y = i % COLS
+            for i in valid_actions:
+                x = i // ROWS
+                y = i % COLS
 
-        #         new_statey, rewardy, doney = step(state, i)
+                new_statey, rewardy, doney = step(state.copy(), i)
                 
-        #         step_count += 1
                 
-        #         # buffer to buffer at ind % buffer_size
-        #         buffer_idx = step_count % buffer_size
-        #         state_buffer[buffer_idx] = state
-        #         action_buffer[buffer_idx] = i
-        #         new_state_buffer[buffer_idx] = new_statey
-        #         reward_buffer[buffer_idx] = rewardy
-        #         done_buffer[buffer_idx] = doney
-        #         illegal_action_buffer[buffer_idx] = invalid_actions_newy
+                # buffer to buffer at ind % buffer_size
+                buffer_idx = step_count % buffer_size
+                state_buffer[buffer_idx] = state
+                action_buffer[buffer_idx] = i
+                new_state_buffer[buffer_idx] = new_statey
+                reward_buffer[buffer_idx] = rewardy
+                done_buffer[buffer_idx] = doney
+                invalid_actions_buffer[buffer_idx] = invalid_actions_newy
+                step_count += 1
                 
-        # else:
-        buffer_idx = step_count % buffer_size
-        state_buffer[buffer_idx] = state
-        action_buffer[buffer_idx] = action
-        new_state_buffer[buffer_idx] = new_state
-        reward_buffer[buffer_idx] = reward
-        done_buffer[buffer_idx] = done
-        illegal_action_buffer[buffer_idx] = invalid_actions_new 
+        else:
+            buffer_idx = step_count % buffer_size
+            state_buffer[buffer_idx] = state
+            action_buffer[buffer_idx] = action
+            new_state_buffer[buffer_idx] = new_state
+            reward_buffer[buffer_idx] = reward
+            done_buffer[buffer_idx] = done
+            invalid_actions_buffer[buffer_idx] = invalid_actions_new 
+            step_count += 1
             
         state = new_state
 
@@ -368,12 +379,15 @@ for episode in range(EPISODES):
         q_vals = out[np.arange(BATCH_SIZE), action_buffer[batch_idx]]
         out_next = model(torch.tensor(new_state_buffer[batch_idx]).float().to(device))
         
-        out_next[torch.tensor(illegal_action_buffer[batch_idx]).bool()] = -torch.inf
+        out_next[torch.tensor(invalid_actions_buffer[batch_idx]).bool()] = -torch.inf
         
-        q_vals_next = torch.max(out_next, dim=1).values
-            
+        q_vals_next = out_next[np.arange(BATCH_SIZE), torch.argmax(out_next, dim=1)] 
+        
+        reward_tensor = torch.tensor(reward_buffer[batch_idx]).float().to(device)
+        done_tensor = torch.tensor(done_buffer[batch_idx]).float().to(device)
+        
         with torch.no_grad():
-            target = torch.tensor(reward_buffer[batch_idx]).float().to(device) + GAMMA * q_vals_next * (1 - torch.tensor(done_buffer[batch_idx]).float().to(device)) 
+            target = reward_tensor + GAMMA * q_vals_next * (1 - done_tensor) 
         l = loss_fn(q_vals, target)
 
         optimizer.zero_grad()
@@ -389,10 +403,6 @@ for episode in range(EPISODES):
         avg_score = np.mean(scores[-100:])
         print(f"Episode {episode}, Step {step_count}, score {score:4}, avg score {avg_score:4}, eps {EPSILON:.6f}, losses {np.mean(losses[-100:]):.4f}")
         
-        # plt.clf()
-        # plt.plot(scores)
-        # plt.title(f'Episode {episode}, score {score}, avg score {avg_score}, eps {EPSILON:.3f}')
-        # drawnow()
         
     if action_line_enabled:
         action_line = []
@@ -431,4 +441,3 @@ plt.title("Learning Curve")
 plt.xlabel("Episode")
 plt.ylabel("Score")
 plt.show()
-plt.waitforbuttonpress()

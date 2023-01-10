@@ -72,13 +72,12 @@ def model_action(state):
     return np.argmax(observation)
 
 
-def main():
+if __name__ == "__main__":
     scores = []
     losses = []
     action_line = []
     step_count = 0
     screen = setup_screen(ROWS, COLS)
-
 
     print(device)
 
@@ -102,8 +101,7 @@ def main():
             else:
                 action = model_action(state)
             
-            if render_pygame:
-                game_loop(state, mine_board, action, screen, rows, cols)
+            game_loop(state, mine_board, action, screen, ROWS, COLS)
             
             new_state, reward, done = step(state, MINES, mine_board, solved_board, action, is_first_move)
             new_action = model_action(new_state)
@@ -143,11 +141,11 @@ def main():
         if step_count > BUFFER_SIZE:
             losses.append(l.item())
         
-        if episode % 10 == 0:
+        if episode % 1 == 0:
             avg_score = np.mean(scores[-1000:])
             print(f"episode {episode:>5}, score {score:>6.1f}, avg score {avg_score:>6.1f}, eps {epsilon:.3f}, losses {np.mean(losses[-1000:]):.3f}")
             
-            # plot_scores(scores, episode, score, avg_score, epsilon)
+            plot_scores(scores, episode, score, avg_score, epsilon)
 
         if not TRAINING: break
 

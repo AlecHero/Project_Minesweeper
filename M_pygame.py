@@ -2,9 +2,10 @@ import pygame
 import numpy as np
 
 slow_mode = False
-render_pygame = False
-action_line_enabled = False
+render_pygame = True
+action_line_enabled = True
 action_line = []
+
 
 CLOSED = 9
 SQUARE_SIZE = 50

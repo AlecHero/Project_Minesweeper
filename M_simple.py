@@ -13,7 +13,7 @@ def create_board(rows, cols, mines):
 
 
 def solve_board(board):
-    rows, cols = board.shape
+    _, rows, cols = board.shape
     solved_board = board.copy()
     for i,j in np.argwhere(solved_board == -1):
         for k in range(-1, 2):

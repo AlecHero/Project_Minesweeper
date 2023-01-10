@@ -372,9 +372,9 @@ for episode in range(EPISODES):
         # Compute the loss for this input-output pair
 
         if done:
-            loss = loss_fn(q_val, torch.tensor(reward).float().to(device))
+            loss = loss_fn(model_state[0][action.long()], torch.tensor(reward).float().to(device))
         else:
-            loss = loss_fn(q_val, torch.tensor(reward + GAMMA * new_action).float().to(device))
+            loss = loss_fn(model_state[0][action.long()], torch.tensor(reward + GAMMA * new_action).float().to(device))
         # Accumulate the loss
         total_loss += loss
 

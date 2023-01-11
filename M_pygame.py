@@ -18,11 +18,7 @@ def setup_screen(rows, cols):
      
      
 def input_loop():
-    global training
-    global slow_mode
-    global render_pygame
-    global action_line_enabled
-    global peek_enabled
+    global training, slow_mode, render_pygame, action_line_enabled, peek_enabled
     
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN and event.key == pygame.K_s:

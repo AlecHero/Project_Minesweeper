@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from M_simple import*
+from M_simple import Minesweeper
 from M_pygame import*
 from M_plot   import*
 
@@ -25,6 +25,10 @@ training = True
 ROWS = 5
 COLS = 5
 MINES = 3
+REWARD_WIN = 100
+REWARD_LOSS = -100
+REWARD_STEP = -1
+REWARDS = (REWARD_WIN, REWARD_LOSS, REWARD_STEP)
 
 
 if USE_GPU:
@@ -63,7 +67,7 @@ except FileNotFoundError:
 
 
 def model_action(state):
-    invalid_actions = np.logical_not(state[CLOSED].flatten()).nonzero()[0]
+    invalid_actions = np.logical_not(state[-1].flatten()).nonzero()[0]
     
     with torch.inference_mode():
         observation = model(torch.from_numpy(np.expand_dims(state, axis=0)).float().to(device))
@@ -75,29 +79,32 @@ def model_action(state):
 
 if __name__ == "__main__":
     scores = []
-    losses = []
+    # losses = []
+    win_counter = 0
+    loss_counter = 0
     action_line = []
+    loss = 0
     step_count = 0
     screen = setup_screen(ROWS, COLS)
 
     print(device)
 
-
     for episode in range(EPISODES):
         epsilon = max(epsilon * EPSILON_DECAY, 0.001)
 
-        state, mine_board = create_board(ROWS, COLS, MINES)
-        solved_board = solve_board(mine_board)
+        env = Minesweeper((ROWS, COLS), MINES, REWARDS)
+        state, mine_board, solved_board = env.board, env.mine_board, env.solved_board
         
         score = 0
         done = False
-        is_first_move = True
+        first_move = True
+        reward = 0
         
         while not done:
             step_count += 1
         
             if np.random.rand() < epsilon:
-                valid_actions = state[CLOSED].flatten().nonzero()[0]
+                valid_actions = state[-1].flatten().nonzero()[0]
                 action = np.random.choice(valid_actions)
             else:
                 action = model_action(state)
@@ -109,11 +116,11 @@ if __name__ == "__main__":
             is_first_move = False
 
             
-            invalid_actions_idx = np.logical_not(new_state[CLOSED].flatten()).nonzero()[0]
+            invalid_actions_idx = np.logical_not(new_state[-1].flatten()).nonzero()[0]
             invalid_actions_new = np.zeros(ROWS*COLS, dtype=int)
             invalid_actions_new[invalid_actions_idx] = 1
 
-            state = new_state   
+            state = new_state
             score += reward
             
             # UPDATE BUFFERS
@@ -124,7 +131,11 @@ if __name__ == "__main__":
             invalid_actions_buffer[buffer_idx] = invalid_actions_new
             reward_buffer[buffer_idx] = reward
             done_buffer[buffer_idx] = done
-                
+        
+        if reward == WIN_REWARD:
+            win_counter += 1
+        else:
+            loss_counter += 1                
 
         # Train the model
         if step_count > BUFFER_SIZE:
@@ -150,13 +161,13 @@ if __name__ == "__main__":
 
         scores.append(score)
         
-        if step_count > BUFFER_SIZE:
-            losses.append(l.item())
+        # if step_count > BUFFER_SIZE:
+        #     losses.append(l.item())
         
-        if episode % 1 == 0:
-            avg_score = np.mean(scores[-1000:])
-            print(f"episode {episode:>5}, score {score:>4}, avg score {avg_score:>6.2f}, eps {epsilon:.3f}, loss {np.mean(losses[-1000:]):.3f}, w/l {np.sum(scores[-1000:])/1000:.3f}")
-            
+        if episode % 10 == 0:
+            # avg_score = np.mean(scores[-100:])
+            print(f"episode {episode:>5}, score {score:>4}, eps {epsilon:.3f}, loss {1}, w/l {win_counter/loss_counter:>3.2f}")
+            #, avg score {avg_score:>6.2f}
             # plot_scores(scores, episode, score, avg_score, epsilon)
 
         if not training: break

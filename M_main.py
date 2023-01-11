@@ -9,22 +9,22 @@ from M_plot   import*
 
 # Model parameters
 GAMMA = 0.99
-EPSILON_DECAY = 0.001
 LEARNING_RATE = 0.003
+EPSILON_DECAY = 0.999
 epsilon = 1.0
 
 EPISODES = 1_000_000
 BATCH_SIZE = 100
-USE_GPU = False
+BUFFER_SIZE = 10_000
 MODEL_SAVE_PATH = "Baba1.pth"
+USE_GPU = False
 training = True
 
-BUFFER_SIZE = 100
 
 # Game parameters
-ROWS = 10
-COLS = 10
-MINES = 20
+ROWS = 5
+COLS = 5
+MINES = 3
 
 
 if USE_GPU:
@@ -36,20 +36,20 @@ else:
 state_buffer = np.zeros((BUFFER_SIZE, 10, ROWS, COLS), dtype=bool)
 action_buffer = np.zeros(BUFFER_SIZE, dtype=int)
 new_state_buffer = np.zeros((BUFFER_SIZE, 10, ROWS, COLS), dtype=bool)
-new_action_buffer = np.zeros(BUFFER_SIZE, dtype=int)
+invalid_actions_buffer = np.zeros((BUFFER_SIZE, ROWS*COLS), dtype=int)
 reward_buffer = np.zeros(BUFFER_SIZE, dtype=int)
 done_buffer = np.zeros(BUFFER_SIZE, dtype=bool)
 
 # Define the network CNN with a kernel size of 5
 model = nn.Sequential(
-    nn.Conv2d(10, 32, kernel_size=5, stride=1, padding=1),
+    nn.Conv2d(10, 32, kernel_size=3, stride=1, padding=1),
     nn.Sigmoid(),
-    nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=1),
+    nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
     nn.Sigmoid(),
-    nn.Conv2d(64, 128, kernel_size=5, stride=1, padding=1),
+    nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
     nn.Sigmoid(), 
     nn.Flatten(),
-    nn.Linear(2048, ROWS*COLS) 
+    nn.Linear(3200, ROWS*COLS)
 ).to(device)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 loss_fn = nn.MSELoss()
@@ -64,9 +64,10 @@ except FileNotFoundError:
 
 def model_action(state):
     invalid_actions = np.logical_not(state[CLOSED].flatten()).nonzero()[0]
-                
-    observation = model(torch.from_numpy(np.expand_dims(state, axis=0)).float().to(device))
-    observation = observation.detach().cpu().numpy().flatten()
+    
+    with torch.inference_mode():
+        observation = model(torch.from_numpy(np.expand_dims(state, axis=0)).float().to(device))
+        observation = observation.detach().cpu().numpy().flatten()
     observation[invalid_actions] = -np.inf
 
     return np.argmax(observation)
@@ -81,12 +82,12 @@ if __name__ == "__main__":
 
     print(device)
 
-    #----------------------------------------Training----------------------------------------
+
     for episode in range(EPISODES):
-        epsilon = max(epsilon - EPSILON_DECAY, 0.001)
+        epsilon = max(epsilon * EPSILON_DECAY, 0.001)
 
         state, mine_board = create_board(ROWS, COLS, MINES)
-        solved_board = solve_board(state)
+        solved_board = solve_board(mine_board)
         
         score = 0
         done = False
@@ -97,40 +98,51 @@ if __name__ == "__main__":
         
             if np.random.rand() < epsilon:
                 valid_actions = state[CLOSED].flatten().nonzero()[0]
-                action = np.random.choice(valid_actions)   
+                action = np.random.choice(valid_actions)
             else:
                 action = model_action(state)
             
             game_loop(state, mine_board, action, screen, ROWS, COLS, reset=is_first_move)
             
-            new_state, reward, done = step(state, MINES, mine_board, solved_board, action, is_first_move)
+            new_state, solved_board, reward, done = step(state, MINES, mine_board, solved_board, action, is_first_move)
             new_action = model_action(new_state)
             is_first_move = False
 
-            state = new_state
+            
+            invalid_actions_idx = np.logical_not(new_state[CLOSED].flatten()).nonzero()[0]
+            invalid_actions_new = np.zeros(ROWS*COLS, dtype=int)
+            invalid_actions_new[invalid_actions_idx] = 1
+
+            state = new_state   
             score += reward
             
             # UPDATE BUFFERS
-            # buffer_idx = step_count % buffer_size
-            # state_buffer[buffer_idx] = state
-            # action_buffer[buffer_idx] = action
-            # new_state_buffer[buffer_idx] = new_state
-            # new_action_buffer[buffer_idx] = new_action
-            # reward_buffer[buffer_idx] = reward
-            # done_buffer[buffer_idx] = done
+            buffer_idx = step_count % BUFFER_SIZE
+            state_buffer[buffer_idx] = state
+            action_buffer[buffer_idx] = action
+            new_state_buffer[buffer_idx] = new_state
+            invalid_actions_buffer[buffer_idx] = invalid_actions_new
+            reward_buffer[buffer_idx] = reward
+            done_buffer[buffer_idx] = done
                 
 
         # Train the model
         if step_count > BUFFER_SIZE:
             batch_idx = np.random.choice(BUFFER_SIZE, size=BATCH_SIZE)
-            
+        
             out = model(torch.tensor(state_buffer[batch_idx]).float().to(device))
-            q_val = out[np.arange(BATCH_SIZE), action_buffer[batch_idx]]
+            q_vals = out[np.arange(BATCH_SIZE), action_buffer[batch_idx]]
+            
             out_next = model(torch.tensor(new_state_buffer[batch_idx]).float().to(device))
-            q_val_next = out_next[np.arange(BATCH_SIZE), new_action_buffer[batch_idx]]
-
-            target = torch.tensor(reward_buffer[batch_idx]).float().to(device) + GAMMA * q_val_next * (1 - torch.tensor(done_buffer[batch_idx]).float().to(device))
-            l = loss_fn(q_val, target.float())
+            out_next[torch.tensor(invalid_actions_buffer[batch_idx]).bool()] = -np.inf
+            q_vals_next = out_next[np.arange(BATCH_SIZE), torch.argmax(out_next, dim=1)] 
+            
+            reward_tensor = torch.tensor(reward_buffer[batch_idx]).float().to(device)
+            done_tensor = torch.tensor(done_buffer[batch_idx]).float().to(device)
+            
+            with torch.no_grad():
+                target = reward_tensor + GAMMA * q_vals_next * (1 - done_tensor) 
+            l = loss_fn(q_vals, target)
 
             optimizer.zero_grad()
             l.backward()
@@ -143,7 +155,7 @@ if __name__ == "__main__":
         
         if episode % 1 == 0:
             avg_score = np.mean(scores[-1000:])
-            print(f"episode {episode:>5}, score {score:>6.1f}, avg score {avg_score:>6.1f}, eps {epsilon:.3f}, losses {np.mean(losses[-1000:]):.3f}")
+            print(f"episode {episode:>5}, score {score:>4}, avg score {avg_score:>6.2f}, eps {epsilon:.3f}, loss {np.mean(losses[-1000:]):.3f}, w/l {np.sum(scores[-1000:])/1000:.3f}")
             
             # plot_scores(scores, episode, score, avg_score, epsilon)
 

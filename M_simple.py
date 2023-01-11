@@ -25,8 +25,8 @@ def solve_board(board):
 
 
 def step(board, mines, mine_board, solved_board, action, is_first_move=False):
-    x = action // board.shape[1]
-    y = action %  board.shape[0]
+    x = action // board.shape[0]
+    y = action %  board.shape[1]
     done = False
     
     # If first move is bomb

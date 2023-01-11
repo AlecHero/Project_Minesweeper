@@ -5,7 +5,7 @@ slow_mode = False
 render_pygame = True
 action_line_enabled = True
 action_line = []
-
+peek_enabled = False
 
 CLOSED = 9
 SQUARE_SIZE = 50
@@ -18,9 +18,15 @@ def setup_screen(rows, cols):
      
      
 def input_loop():
+    global training
+    global slow_mode
+    global render_pygame
+    global action_line_enabled
+    global peek_enabled
+    
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-            TRAINING = False
+            training = False
         if event.type == pygame.KEYDOWN and event.key == pygame.K_m:
             slow_mode = False
         if event.type == pygame.KEYDOWN and event.key == pygame.K_n:
@@ -28,10 +34,16 @@ def input_loop():
         if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
             render_pygame = not render_pygame
         if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
-            action_line_enabled = not action_line_enabled   
+            action_line_enabled = not action_line_enabled
+            render_pygame = not render_pygame
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+            peek_enabled = not peek_enabled
 
 
-def render_loop(state, mine_board, action, screen, rows, cols):
+def render_loop(state, mine_board, action, screen, rows, cols, reset=False):
+    global action_line
+    if reset: action_line = []
+    
     screen.fill((255,255,255))
     # undo one hot encoding and draw the board
     game_board = np.argmax(state, axis=0)
@@ -69,10 +81,9 @@ def render_loop(state, mine_board, action, screen, rows, cols):
     pygame.display.update()
     
 
-def game_loop(state, mine_board, action, screen, rows, cols):
-    
+def game_loop(state, mine_board, action, screen, rows, cols, reset):
     input_loop()
     
-    if render_pygame: render_loop(state, mine_board, action, screen, rows, cols)
+    if render_pygame: render_loop(state, mine_board, action, screen, rows, cols, reset)
 
     if slow_mode: pygame.time.delay(200)

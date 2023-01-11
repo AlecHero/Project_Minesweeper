@@ -16,8 +16,8 @@ epsilon = 1.0
 EPISODES = 1_000_000
 BATCH_SIZE = 100
 USE_GPU = False
-TRAINING = True
 MODEL_SAVE_PATH = "Baba1.pth"
+training = True
 
 BUFFER_SIZE = 100
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
             else:
                 action = model_action(state)
             
-            game_loop(state, mine_board, action, screen, ROWS, COLS)
+            game_loop(state, mine_board, action, screen, ROWS, COLS, reset=is_first_move)
             
             new_state, reward, done = step(state, MINES, mine_board, solved_board, action, is_first_move)
             new_action = model_action(new_state)
@@ -145,8 +145,8 @@ if __name__ == "__main__":
             avg_score = np.mean(scores[-1000:])
             print(f"episode {episode:>5}, score {score:>6.1f}, avg score {avg_score:>6.1f}, eps {epsilon:.3f}, losses {np.mean(losses[-1000:]):.3f}")
             
-            plot_scores(scores, episode, score, avg_score, epsilon)
+            # plot_scores(scores, episode, score, avg_score, epsilon)
 
-        if not TRAINING: break
+        if not training: break
 
     torch.save(model.state_dict(), MODEL_SAVE_PATH)

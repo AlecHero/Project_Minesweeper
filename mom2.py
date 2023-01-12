@@ -19,13 +19,12 @@ EPSILON_MIN = 0.01
 BATCH_SIZE = 50
 MEM_SIZE = 10_000
 LEARNING_RATE = 0.0001
-MODEL_NAME = "6x64mMom.pth"
+KERNAL_SIZE = 2
 
 # Define game parameters
-ROWS = 4
-COLS = 4
-MINES = 2
-CLOSED = 9
+ROWS = 6
+COLS = 6
+MINES = 4
 LOSS_REWARD = -100
 WIN_REWARD = 100
 STEP_REWARD = 30
@@ -50,6 +49,8 @@ if not force_cpu:
 else:
     device = torch.device("cpu")
 
+
+model_path = f"{ROWS}x{COLS}_{KERNAL_SIZE}k_MOM.pth"
 
 
 #-----------------------------------------Pygame Params-------------------------------------------
@@ -86,7 +87,7 @@ def render():
 
     for y in range(ROWS):
         for x in range(COLS):
-            if state[CLOSED, y, x] == 1:
+            if state[-1, y, x] == 1:
                 pygame.draw.rect(screen, (144, 238, 144), (pp + x * square_size, pp + y * square_size, square_size, square_size))
             elif state[0, y, x] == 1:
                 pygame.draw.rect(screen, (255, 255, 255), (pp + x * square_size, pp + y * square_size, square_size, square_size))
@@ -205,7 +206,7 @@ def place_mines(mine_board):
 def reset_board():
     board = np.zeros((10, ROWS, COLS), dtype=bool)
     mine_board = np.zeros((ROWS, COLS), dtype=bool)
-    board[CLOSED] = True
+    board[-1] = True
 
     mine_board = place_mines(mine_board)
     
@@ -225,7 +226,7 @@ def count_neighbour_mines(mine_board, x, y):
 # open the neighbours
 def open_neighbour_cells(board, mine_board, x, y):
     new_board = board.copy()
-    new_board[CLOSED, x, y] = False
+    new_board[-1, x, y] = False
 
     mines = count_neighbour_mines(mine_board, x, y)
     new_board[mines, x, y] = True
@@ -233,13 +234,13 @@ def open_neighbour_cells(board, mine_board, x, y):
     if mines == 0:
         for _x in range(max(0, x-1), min(ROWS, x+2)):
             for _y in range(max(0, y-1), min(COLS, y+2)):
-                if new_board[CLOSED, _x, _y]:
+                if new_board[-1, _x, _y]:
                     mines = count_neighbour_mines(mine_board, _x, _y)
                     if mines == 0:
                         new_board = open_neighbour_cells(new_board, mine_board, _x, _y)
                     else:
                         new_board[mines, _x, _y] = True
-                        new_board[CLOSED, _x, _y] = False
+                        new_board[-1, _x, _y] = False
 
     return new_board
 
@@ -260,14 +261,14 @@ def step(board, action):
     max_x = min(ROWS-1, x+1)
     min_y = max(0, y-1)
     max_y = min(COLS-1, y+1)
-    if not board[CLOSED, min_x:max_x+1, min_y:max_y+1].all():
+    if not board[-1, min_x:max_x+1, min_y:max_y+1].all():
         reward = STEP_REWARD
     else:
         reward = GUESS_REWARD
         
     board = open_neighbour_cells(board, mine_board, x, y)
     
-    if np.sum(board[CLOSED]) == MINES:
+    if np.sum(board[-1]) == MINES:
         reward = WIN_REWARD
         done = True
         
@@ -284,24 +285,20 @@ done_buffer = np.zeros(buffer_size, dtype=bool)
 
 # Define the network CNN with a kernel size of 5
 model = nn.Sequential(
-    nn.Conv2d(10, 32, kernel_size=2, stride=1, padding=2),
+    nn.Conv2d(10, 32, kernel_size=KERNAL_SIZE, stride=1, padding=2),
     nn.LeakyReLU(),
-    nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=2),
+    nn.Conv2d(32, 64, kernel_size=KERNAL_SIZE, stride=1, padding=2),
     nn.LeakyReLU(),
-    nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
-    nn.LeakyReLU(), 
+    nn.Conv2d(64, 128, kernel_size=KERNAL_SIZE, stride=1, padding=2),
+    nn.LeakyReLU(),
     nn.Flatten(),
-    nn.Linear(21632, ACTIONS)
+    nn.Linear(28800, ACTIONS)
 ).to(device)
-
-model.to(device)
-
 print(device)
-print(model)
 
 # load the model if it exists
 try:
-    model.load_state_dict(torch.load(MODEL_NAME))
+    model.load_state_dict(torch.load(model_path))
     print("Model loaded")
 except FileNotFoundError:
     print("Model not found")
@@ -318,7 +315,7 @@ loss_fn = nn.MSELoss()
 for episode in range(EPISODES):
     EPSILON = EPSILON * EPSILON_DECAY
     EPSILON = max(EPSILON, EPSILON_MIN)
-    
+
     score = 0
     done = False
 
@@ -327,7 +324,7 @@ for episode in range(EPISODES):
     first_action = True
     
     while not done:
-        invalid_actions = np.nonzero(state[CLOSED].flatten() == False)[0]
+        invalid_actions = np.nonzero(state[-1].flatten() == False)[0]
 
         if np.random.rand() < EPSILON:
             action = np.random.randint(0, ACTIONS)
@@ -365,7 +362,7 @@ for episode in range(EPISODES):
             render()
         
         # invalid actions
-        invalid_actions_idx = np.nonzero(new_state[CLOSED].flatten() == False, )[0]
+        invalid_actions_idx = np.nonzero(new_state[-1].flatten() == False, )[0]
         invalid_actions_new = np.zeros(ROWS * COLS)
         invalid_actions_new[invalid_actions_idx] = True
         
@@ -404,7 +401,6 @@ for episode in range(EPISODES):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
                 action_line_enabled = not action_line_enabled
         
-
     if step_count > buffer_size:
         batch_idx = np.random.choice(buffer_size, size=BATCH_SIZE)
         
@@ -455,7 +451,7 @@ for episode in range(EPISODES):
 
 
 #----------------------------------------Save model----------------------------------------
-torch.save(model.state_dict(), MODEL_NAME)
+torch.save(model.state_dict(), model_path)
 
 
 #----------------------------------------Plot learning curve----------------------------------------

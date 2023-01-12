@@ -22,9 +22,9 @@ LEARNING_RATE = 0.0001
 MODEL_NAME = "6x64mMom.pth"
 
 # Define game parameters
-ROWS = 6
-COLS = 6
-MINES = 4
+ROWS = 4
+COLS = 4
+MINES = 2
 CLOSED = 9
 LOSS_REWARD = -100
 WIN_REWARD = 100
@@ -284,14 +284,14 @@ done_buffer = np.zeros(buffer_size, dtype=bool)
 
 # Define the network CNN with a kernel size of 5
 model = nn.Sequential(
-    nn.Conv2d(10, 32, kernel_size=5, stride=1, padding=2),
+    nn.Conv2d(10, 32, kernel_size=2, stride=1, padding=2),
     nn.LeakyReLU(),
-    nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
+    nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=2),
     nn.LeakyReLU(),
-    nn.Conv2d(64, 128, kernel_size=5, stride=1, padding=2),
+    nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
     nn.LeakyReLU(), 
     nn.Flatten(),
-    nn.Linear(4608, ACTIONS)
+    nn.Linear(21632, ACTIONS)
 ).to(device)
 
 model.to(device)

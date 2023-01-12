@@ -57,7 +57,7 @@ def render_loop(state, mine_board, action, screen, rows, cols, reset=False):
                 text_surface = font.render(text, True, (0, 0, 0))
                 screen.blit(text_surface, (x * SQUARE_SIZE + 20, y * SQUARE_SIZE + 10))
 
-            if mine_board[y, x] == -1:
+            if mine_board[y, x] == 1:
                 pygame.draw.rect(screen, (255, 0, 0), (x * SQUARE_SIZE + 10, y * SQUARE_SIZE + 10, SQUARE_SIZE - 20, SQUARE_SIZE - 20))
 
             if y == int(action // rows) and x == int(action % cols):

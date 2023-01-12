@@ -1,3 +1,5 @@
+import numpy as np
+
 class Minesweeper():
     def __init__(self, board_shape, mines, rewards):
         self.rows, self.cols = board_shape
@@ -5,7 +7,7 @@ class Minesweeper():
         self.reward_win, self.reward_loss, self.reward_step = rewards
         
         self.board, self.mine_board = self.create_board()
-        self.solved_board = self.solve_board(self.mine_board)
+        self.solved_board = self.solve_board()
         
 
     def create_board(self):
@@ -45,7 +47,7 @@ class Minesweeper():
             self.mine_board[x,y] = 0
             self.mine_board[min_pos] = 1
 
-            self.solved_board = self.solve_board(self.mine_board)
+            self.solved_board = self.solve_board()
         # If move is bomb
         elif self.mine_board[x, y]:
             reward = self.reward_loss

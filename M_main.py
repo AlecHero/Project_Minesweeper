@@ -22,12 +22,12 @@ training = True
 
 
 # Game parameters
-ROWS = 5
-COLS = 5
-MINES = 3
-REWARD_WIN = 100
+ROWS = 4
+COLS = 4
+MINES = 2
+REWARD_WIN = 200
 REWARD_LOSS = -100
-REWARD_STEP = -1
+REWARD_STEP = -2
 REWARDS = (REWARD_WIN, REWARD_LOSS, REWARD_STEP)
 
 
@@ -47,13 +47,13 @@ done_buffer = np.zeros(BUFFER_SIZE, dtype=bool)
 # Define the network CNN with a kernel size of 5
 model = nn.Sequential(
     nn.Conv2d(10, 32, kernel_size=3, stride=1, padding=1),
-    nn.Sigmoid(),
+    nn.ReLU(),
     nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-    nn.Sigmoid(),
+    nn.ReLU(),
     nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-    nn.Sigmoid(), 
+    nn.ReLU(),
     nn.Flatten(),
-    nn.Linear(3200, ROWS*COLS)
+    nn.Linear(2048, ROWS*COLS)
 ).to(device)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 loss_fn = nn.MSELoss()
@@ -109,11 +109,11 @@ if __name__ == "__main__":
             else:
                 action = model_action(state)
             
-            game_loop(state, mine_board, action, screen, ROWS, COLS, reset=is_first_move)
+            game_loop(state, mine_board, action, screen, ROWS, COLS, reset=first_move)
             
-            new_state, solved_board, reward, done = step(state, MINES, mine_board, solved_board, action, is_first_move)
+            new_state, solved_board, reward, done = env.step(action, first_move)
             new_action = model_action(new_state)
-            is_first_move = False
+            first_move = False
 
             
             invalid_actions_idx = np.logical_not(new_state[-1].flatten()).nonzero()[0]
@@ -132,7 +132,7 @@ if __name__ == "__main__":
             reward_buffer[buffer_idx] = reward
             done_buffer[buffer_idx] = done
         
-        if reward == WIN_REWARD:
+        if reward == REWARD_WIN:
             win_counter += 1
         else:
             loss_counter += 1                

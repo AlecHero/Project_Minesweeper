@@ -38,20 +38,34 @@ class Minesweeper():
         solved_board = np.clip(solved_board, -1, 8)
         return solved_board
 
-
+    temp_coords_list = []
     def step(self, action, first_move=False):
         x = action // self.rows
         y = action %  self.cols
         done = False
         
+        size_0 = np.size(self.temp_coords_list)
+        self.temp_coords_list.append((x,y))
+        
         self.visible_board[x, y] = False
-        if self.solved_board[x, y] == 0:
-            old_mask = self.visible_board.copy()
-            
-            self.visible_board[self.get_slice(x, y)] = False
         
         self.s_board = self.solved_board.copy()
         self.s_board[self.visible_board] = 9
+        # self.s_board[x, y] = self.solved_board[x, y]
+        
+        if self.solved_board[x, y] == 0:
+            a = np.argwhere(self.s_board == 0)
+            
+            self.visible_board[self.get_slice(x, y)] = False
+            self.s_board = self.solved_board.copy()
+            self.s_board[self.visible_board] = 9
+        
+            b = np.argwhere(self.s_board == 0)
+            
+            new_coords = b[len(a):]
+        
+        
+
         
         if self.mine_board[x,y] and first_move:
             min_pos = np.argmin(self.mine_board) // 10, np.argmin(self.mine_board) % 10
@@ -65,7 +79,7 @@ class Minesweeper():
 
     
     def render(self, print_board=True):
-        str_board = np.array2string(self.s_board, separator=" ")
+        str_board = np.array2string(self.s_board, separator="  ")
         str_board = str_board.replace('9', '█')
         str_board = str_board.replace('0', '░')
         str_board = str_board.replace("[", " ")

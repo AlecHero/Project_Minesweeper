@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import itertools
 import pygame
 
 # Pygame controls:
@@ -301,15 +302,22 @@ done_buffer = np.zeros(buffer_size, dtype=bool)
 
 
 # Define the network CNN with a kernel size of 5
+
+n0 = 10
+n1 = 16
+n2 = n1 * 2
+n3 = n2 * 2
+
+
 model = nn.Sequential(
-    nn.Conv2d(10, 32, kernel_size=5, stride=1, padding="same"),
+    nn.Conv2d(n0, n1, kernel_size=5, stride=1, padding="same"),
     nn.LeakyReLU(),
-    nn.Conv2d(32, 64, kernel_size=5, stride=1, padding="same"),
+    nn.Conv2d(n1, n2, kernel_size=5, stride=1, padding="same"),
     nn.LeakyReLU(),
-    nn.Conv2d(64, 128, kernel_size=5, stride=1, padding="same"),
+    nn.Conv2d(n2, n3, kernel_size=5, stride=1, padding="same"),
     nn.LeakyReLU(), 
     nn.Flatten(),
-    nn.Linear(10368, ACTIONS)
+    nn.Linear(ACTIONS * n3, ACTIONS)
 ).to(device)
 
 model.to(device)

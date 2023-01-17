@@ -21,7 +21,7 @@ import pygame
 GAMMA = 0.99
 EPISODES = 50_000
 EPSILON = 1
-EPSILON_DECAY = 0.9995
+EPSILON_DECAY = 1.0
 EPSILON_MIN = 0.01
 BATCH_SIZE = 100
 MEM_SIZE = 10_000
@@ -304,7 +304,7 @@ done_buffer = np.zeros(buffer_size, dtype=bool)
 # Define the network CNN with a kernel size of 5
 
 n0 = 10
-n1 = 16
+n1 = 32
 n2 = n1 * 2
 n3 = n2 * 2
 
@@ -433,7 +433,7 @@ for episode in range(EPISODES):
                 action_line_enabled = not action_line_enabled
         
     # Run at the end of each episode
-    if step_count > buffer_size and training:
+    if step_count > buffer_size and training and False:
         batch_idx = np.random.choice(buffer_size, size=BATCH_SIZE)
         
         out = model(torch.tensor(state_buffer[batch_idx]).float().to(device))
@@ -460,8 +460,8 @@ for episode in range(EPISODES):
 
     scores.append(score)
     
-    if step_count > buffer_size:
-        losses.append(l.item())
+    # if step_count > buffer_size:
+        # losses.append(l.item())
     
     lossy = 0
     avg_score = 0
@@ -470,8 +470,10 @@ for episode in range(EPISODES):
     if episode % 1 == 0:
         if len(losses) > 0:
             avg_score = round(np.mean(scores[-100:]), 1)
-            avg_loss = round(np.mean(losses[-100:]), 0)
-            lossy = round(losses[-1:][0], 0)
+            # avg_loss = round(np.mean(losses[-100:]), 0)
+            # lossy = round(losses[-1:][0], 0)
+            avg_loss = 1
+            lossy = 1
             score = round(score, 0)
         print(f'Episode {episode}, Step {step_count}, score {score:5}, avg_score {avg_score:7}, eps {EPSILON:.4f}, loss {lossy:7}, avg_loss {avg_loss:6}, won {won_counter}, lost {lost_counter}')
         

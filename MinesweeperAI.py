@@ -321,11 +321,11 @@ done_buffer = np.zeros(buffer_size, dtype=bool)
 # Define the model
 model = nn.Sequential(
     nn.Conv2d(10, N1, kernel_size=KERNEL_SIZE, stride=1, padding="same"),
-    nn.ReLU(),
+    nn.LeakyReLU(),
     nn.Conv2d(N1, N2, kernel_size=KERNEL_SIZE, stride=1, padding="same"),
-    nn.ReLU(),
+    nn.LeakyReLU(),
     nn.Conv2d(N2, N3, kernel_size=KERNEL_SIZE, stride=1, padding="same"),
-    nn.ReLU(), 
+    nn.LeakyReLU(), 
     nn.Flatten(),
     nn.Linear(N3*ACTIONS, ACTIONS)
 ).to(device)

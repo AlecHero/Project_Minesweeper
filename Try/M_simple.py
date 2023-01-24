@@ -33,6 +33,24 @@ class Minesweeper():
         solved_board = np.clip(solved_board, -1, 8)
         return solved_board
 
+    def bob(self, new_board, mine_board, x, y):
+        new_board = self.board.copy()
+        new_board[-1, x, y] = False
+
+        mines = self.solved_board[x, y]
+        new_board[mines, x, y] = True
+
+        if mines == 0:
+            for _x in range(max(0, x-1), min(self.rows, x+2)):
+                for _y in range(max(0, y-1), min(self.cols, y+2)):
+                    if new_board[-1, _x, _y]:
+                        mines = self.solved_board[_x, _y]
+                        if mines == 0:
+                            new_board = self.bob(new_board, mine_board, _x, _y)
+                        else:
+                            new_board[mines, _x, _y] = True
+                            new_board[-1, _x, _y] = False
+    
 
     def step(self, action, first_move=False):
         x = action // self.rows
